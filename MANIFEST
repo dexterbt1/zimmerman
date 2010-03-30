@@ -31,6 +31,7 @@ lib/App/zimmerman/Command/deploy.pm
 lib/App/zimmerman/Repo/_base.pm
 lib/App/zimmerman/Repo/FS.pm
 lib/App/zimmerman/script.pm
+lib/App/zimmerman/ReleaseConfig.pm
 lib/App/zimmerman/SiteConfig.pm
 MANIFEST			This list of files
 README.markdown

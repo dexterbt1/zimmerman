@@ -5,6 +5,7 @@ use Carp;
 use File::Copy;
 use File::Spec;
 use File::Path;
+use File::Basename;
 use POSIX qw/strftime/;
 use base qw/App::zimmerman::Command::_base/;
 
@@ -26,6 +27,8 @@ sub run {
     ($self->script->is_valid_install_base($install_base))
         or $self->help("! ERROR: install_base='$install_base' is not a valid writeable directory");
 
+    # we need to generate a auto release_id in the pattern YYYYMMDDHHMMSS
+    # this will be used 
     my $release_id = $self->get_auto_release_id();
     my $tmp_base = File::Spec->catdir($install_base, '_tmp', $release_id);
     if (not -e $tmp_base) {
@@ -49,7 +52,7 @@ sub run {
 
     $self->script->chat("Updating release symlink ... ");
     eval {
-        $self->release_symlink(
+        $self->script->set_release_symlink(
             release_id          => $release_id,
             install_base        => $install_base,
             install_base_tmp    => $tmp_base,
@@ -61,6 +64,7 @@ sub run {
     }
     # ... no errors so far
     $self->script->chat("OK\n");
+    sleep 1;
 }
 
 
@@ -197,45 +201,6 @@ sub build_test_install {
         or die "unable to move tmp releases from $src to $dest: $!";
 }
 
-
-# move from tmp to final release directory and point the symlink
-sub release_symlink {
-    my ($self, %p) = @_;
-    my $symlink_supported = eval { symlink("",""); 1 };
-    ($symlink_supported)
-        or die "symbolic links are not supported on this platform";
-    ($p{release_id})
-        or croak "Invalid install_base";
-    ($p{install_base} and -d $p{install_base})
-        or croak "Invalid install_base";
-
-    my $link = File::Spec->catdir($p{install_base}, $self->script->{current_link});
-    # TODO: note the latest dest, and update the zim/deploy.state.yml
-    (not -e $link)
-        or do { unlink $link or die "Existing link ($link) cannot be deleted"; };
-
-    my $link_dest_rel = File::Spec->catdir($self->script->{releases_dir}, $p{release_id});
-    my $link_dest = File::Spec->catdir($p{install_base}, $self->script->{releases_dir}, $p{release_id});
-
-    # point the link (relative link), via a child process
-    my $pid = fork;
-    (defined $pid)
-        or die "fork is not supported on this platform";
-    if ($pid == 0) {
-        chdir $p{install_base}
-            or die "Unable to change directory to $p{install_base}";
-        symlink( $link_dest_rel, $self->script->{current_link} )
-            or die "Failed symlink() call";
-        exit(0);
-    }
-    else {
-        waitpid $pid, 0;
-        my $code = $?;
-        if ($code != 0) {
-            die "Unable to symlink ($link) to ($link_dest)";
-        }
-    }
-}
 
 
 # ===============================

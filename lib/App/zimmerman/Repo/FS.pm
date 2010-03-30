@@ -7,7 +7,6 @@ use File::Spec;
 use File::Basename;
 use File::Path;
 use File::Copy::Recursive;
-use App::zimmerman::SiteConfig;
 
 sub is_valid_site_name {
     my ($self, $site, $site_branch) = @_;
@@ -56,7 +55,7 @@ sub load_siteconf {
         or croak "Unable to open site configuration ($siteconf_file)";
     my $data = join('',<$fh>)
         or croak "Unable to read site configuration ($siteconf_file)";
-    my $siteconf = App::zimmerman::SiteConfig->new( $data );
+    my $siteconf = App::zimmerman::SiteConfig->get_deserialized( $data );
     return $siteconf;
 }
 

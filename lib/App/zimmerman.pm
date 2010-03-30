@@ -13,15 +13,14 @@ our $VERSION = '0.01';
 
 =head1 SYNOPSIS
 
-    zim help
     zim configure set --repo=svn://12.34.56.78/main 
     zim configure set --site_branch=trunk
     zim configure set --install_base=$HOME
-    zim deploy --site=OurSite
-    zim deploy # do upgrade
-    zim rollback
+    zim configure set --site=OurSite
+    zim deploy
+    zim help
 
-For help, please see L<http://github.com/dexterbt1/zimmerman/>
+Please see L<http://github.com/dexterbt1/zimmerman/>.
 
 =head1 AUTHOR
 
@@ -52,9 +51,6 @@ L<http://github.com/dexterbt1/zimmerman/issues>
 
 
 =back
-
-
-=head1 ACKNOWLEDGEMENTS
 
 
 =head1 LICENSE AND COPYRIGHT

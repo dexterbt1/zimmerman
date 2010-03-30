@@ -18,8 +18,8 @@ Zimmerman tries to be a simpler implementation with certain assumptions.
 
 This project was started because a deployment management tool is needed to fit
 a very specific company / workflow / codebase / team-training / time-cost-constraints. 
-This unique combination led us to either shop/buy or build our own. We opted 
-the latter.
+This unique combination led us to either shop/buy or build our own. After
+carefully research, we opted the latter.
 
 See and test for yourself if Zimmerman can help you simplify your deployment.
 

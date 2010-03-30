@@ -12,12 +12,16 @@ use File::Spec;
 use Pod::Usage;
 use App::zimmerman::Command::_base;
 use App::zimmerman::Repo::_base;
+use App::zimmerman::SiteConfig;
+use App::zimmerman::ReleaseConfig;
 use ExtUtils::MakeMaker 6.31;
 
-my $RELEASES_DIR    = "releases";
-my $CURRENT_LINK    = "current";
-my $SITECONF_DIR    = "zim";
-my $SITECONF_FILE   = "site.yml";
+my $RELEASES_DIR        = "releases";
+my $CURRENT_LINK        = "current";
+my $SITECONF_DIR        = "zim";
+my $SITECONF_FILE       = "site.yml";
+my $RELEASECONF_DIR     = "zim";
+my $RELEASECONF_FILE    = "this_release.yml";
 
 sub new {
     my ($class, %p) = @_;
@@ -25,11 +29,13 @@ sub new {
     foreach my $k (keys %p) {
         $self->{$k} = $p{$k};
     }
-    $self->{script_name}    = basename $0;
-    $self->{siteconf_dir}   = $SITECONF_DIR;
-    $self->{siteconf_file}  = $SITECONF_FILE;
-    $self->{releases_dir}   = $RELEASES_DIR;
-    $self->{current_link}   = $CURRENT_LINK;
+    $self->{script_name}        = basename $0;
+    $self->{siteconf_dir}       = $SITECONF_DIR;
+    $self->{siteconf_file}      = $SITECONF_FILE;
+    $self->{releases_dir}       = $RELEASES_DIR;
+    $self->{current_link}       = $CURRENT_LINK;
+    $self->{releaseconf_dir}    = $RELEASECONF_DIR;
+    $self->{releaseconf_file}   = $RELEASECONF_FILE;
     return $self;
 }
 
@@ -70,6 +76,77 @@ sub dispatch {
         $c->help;
     }
     $c->run( $arga, $argh );
+}
+
+
+# ================ commons API
+
+
+sub set_release_symlink {
+    my ($self, %p) = @_;
+    my $symlink_supported = eval { symlink("",""); 1 };
+    ($symlink_supported)
+        or die "symbolic links are not supported on this platform";
+    ($p{release_id})
+        or croak "Invalid install_base";
+    ($p{install_base} and -d $p{install_base})
+        or croak "Invalid install_base";
+
+    my $link = File::Spec->catdir($p{install_base}, $self->{current_link});
+    
+    # note the latest dest
+    my $rollback_id;
+    if (-e $link) {
+        # TODO: for now assume that the release_id is the basename
+        my $pointing_to = readlink($link);
+        $rollback_id = ($pointing_to) ? basename($pointing_to) : undef;
+        unlink $link 
+            or die "Existing link ($link) cannot be deleted";
+    }
+
+    # write release config, relative to install_base
+    # do this prior to symlinking to avoid race conditions / inconsistent states
+    my $releaseconf_path = File::Spec->catdir(
+        $p{install_base},
+        $self->{releases_dir}, 
+        $p{release_id},
+        $self->{releaseconf_dir}, 
+        $self->{releaseconf_file},
+    );
+    if (-e $releaseconf_path) {
+        my $c = App::zimmerman::ReleaseConfig->from_file($releaseconf_path);
+        $c->{rollback_id} = $rollback_id;
+        $c->save;
+    }
+    else {
+        my $c = App::zimmerman::ReleaseConfig->new();
+        $c->{rollback_id} = $rollback_id;
+        $c->save($releaseconf_path);
+    }
+        
+    # point the link (relative link), via a child process
+    my $link_dest_rel = File::Spec->catdir($self->{releases_dir}, $p{release_id});
+    my $link_dest = File::Spec->catdir($p{install_base}, $self->{releases_dir}, $p{release_id});
+    (-d $link_dest and -x $link_dest)
+        or die "symlink destination directory is invalid ($link_dest)";
+
+    my $pid = fork;
+    (defined $pid)
+        or die "fork is not supported on this platform";
+    if ($pid == 0) {
+        chdir $p{install_base}
+            or die "Unable to change directory to $p{install_base}";
+        symlink( $link_dest_rel, $self->{current_link} )
+            or die "Failed symlink() call";
+        exit(0);
+    }
+    else {
+        waitpid $pid, 0;
+        my $code = $?;
+        if ($code != 0) {
+            die "Unable to symlink ($link) to ($link_dest)";
+        }
+    }
 }
 
 
