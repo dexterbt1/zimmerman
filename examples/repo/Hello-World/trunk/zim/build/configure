@@ -1,0 +1,2 @@
+#!/bin/bash
+perl Makefile.PL INSTALL_BASE=$HOME

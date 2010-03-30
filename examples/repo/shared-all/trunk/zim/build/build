@@ -1,0 +1,2 @@
+#!/bin/bash
+echo Hello World i am the shared-all build script home=$HOME

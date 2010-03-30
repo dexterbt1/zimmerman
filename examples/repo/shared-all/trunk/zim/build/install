@@ -1,0 +1,5 @@
+#!/bin/sh
+mkdir -p "$HOME/bin"
+install -b -m 644 -t "$HOME/bin" \
+    bin/hello \
+    bin/foo*
