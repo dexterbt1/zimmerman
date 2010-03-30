@@ -90,14 +90,12 @@ sub get_repo_backend {
         die "Unable to load backend for [$url]: $@";
     }
     my $repo = $backend_class->new( script => $self, url => $url );
-=pod
-    if (not exists $self->{scm_client}) {
-        my $client = qx{which svn}; chomp $client; # default to svn
-        $self->{scm_client} = $client;
-    }
-    (File::Spec->file_name_is_absolute($self->{scm_client}) and -x $self->{scm_client})
-        or die "Unable to find a suitable scm client";
-=cut
+#    if (not exists $self->{scm_client}) {
+#        my $client = qx{which svn}; chomp $client; # default to svn
+#        $self->{scm_client} = $client;
+#    }
+#    (File::Spec->file_name_is_absolute($self->{scm_client}) and -x $self->{scm_client})
+#        or die "Unable to find a suitable scm client";
     return $repo;
 }
 
@@ -163,9 +161,3 @@ sub chat {
 1;
 
 __END__
-
-=head1 NAME
-
-zimmerman - deployment tool for versioned site installs
-
-=cut
