@@ -1,0 +1,195 @@
+tent
+igloo
+orchard
+zone
+appbox
+box
+node
+capsule
+appsbox
+sitenode
+wyrlsbox
+sitebox
+nodebox
+box
+teepee
+campsite
+zimmerman
+zim
+    configure
+    deploy
+        --install_base=/home/logic/site
+        --repo=svn://...
+        --site=IG-Smart-234-Main-Logic
+        --site_branch=trunk
+        [--initial]
+    rollback
+    status
+
+
+deploy sub-processes:
+    hook:pre_deploy
+    install_deps
+    build
+    build_test
+    install*mv+link
+    hook:post_deploy
+
+rollback
+    count $steps depending on args date/count
+    check deployments history
+    bail out if $steps / history is unavailable
+    for 1..$steps:
+        check previous installation
+        repoint*link to previous installation
+        hook:rollback_step
+    hook:rollback_complete
+
+rollforward
+    count $steps depending on args date/count
+    check deployments history
+    bail out if $steps / history is unavailable
+    for 1..$steps:
+        check forwardnext installation
+        repoint*link to forwardnext installation
+        hook:rollforward_step
+    hook:rollforward_complete
+    
+    
+    
+
+====================
+deployment version tracking
+
+$deploy_to/releases/xxxxxxxxx/zim/site.yml - contains dependencies, copy only
+$deploy_to/releases/xxxxxxxxx/zim/release.yml
+    ---
+    installed_dependencies:
+        - Config::General: 2.26
+        - shared-lib: r1234
+        - IG-Smart-234-Logic-Main: r5675
+$deploy_to/releases/xxxxxxxxx/zim/prev.yml
+    ---
+    prev_id: ~
+    
+$deploy_to/releases/xxxxxxxxx/zim/next.yml
+    ---
+    next_id: ~
+
+
+
+$deploy_to/releases/xxxxx0001/__zim
+---
+id: xxxxx0001
+prev: ~
+rev:
+    - shared-all: 1
+
+$deploy_to/releases/xxxxx0002/__zim
+---
+id: xxxxx0002
+prev: xxxxx0001
+rev:
+    - shared-all: 2
+
+
+layout
+    
+    
+
+
+boxes
+    IG-Smart-234-Main
+    xyber-franchiserc
+
+====================
+
+versite
+
+    CONFIG
+        .versite/versiterc
+        .versite/deploy.log
+        .versite/current-deployments.yml
+            ---
+            ?site-IG-Smart-234-Main:    1
+        
+
+    COMMANDS
+
+        configure
+
+        deploy [options]
+
+            OPTIONS:
+
+                [--install_base|$install_base] 
+                    required, defaults to config
+                [--site|$default_site]
+                    required, 
+                [--tag|--nexttag|--prevtag|--latesttag] 
+                    required
+                [--dry-run]
+
+        status
+
+        diff
+
+        runtest
+
+    
+
+
+======================
+
+/home/logic
+
+$ versite configure
+
+$ versite deploy --latesttag
+
+    # creates dirs ...
+    .versites/sources/sites/IG-Smart-234-Main/1
+    .versites/sources/sites/IG-Smart-234-Main/CURRENT -> 1 # symlinks CURRENT to 1
+
+  
+
+$ versite status
+
+    deployed:
+        site-
+
+
+======================
+
+$ configure
+
+$ deploy 234-Main --latesttag
+    export
+    install deps
+        deploy shared-all
+            export
+            install deps
+                none
+            test
+            copy
+    test
+    copy
+    
+    
+
+$ install shared-all 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

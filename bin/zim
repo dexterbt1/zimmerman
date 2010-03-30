@@ -1,0 +1,17 @@
+#!/usr/bin/perl -w
+use strict;
+use warnings;
+use Getopt::Whatever;
+use File::Basename;
+use App::zimmerman::script;
+
+my $command = shift @ARGV;
+
+App::zimmerman::script
+    ->new
+    ->load_config(\@ARGV, \%ARGV)
+    ->dispatch($command, \@ARGV, \%ARGV);
+
+
+__END__
+
