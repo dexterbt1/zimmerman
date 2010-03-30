@@ -7,11 +7,11 @@ Zimmerman is a minimalist deployment tool loosely inspired by
 
 Zimmerman is a derived German word means `carpenter`.
 
-* * * 
+Overview
+--------
 
-    This is a work in progress. Please be patient while we finalize things around.
+This is a work in progress. Please be patient while we finalize things around.
 
-* * * 
 
 Meta
 ----
@@ -21,9 +21,8 @@ Meta
 * Bugs: <http://github.com/dexterbt1/zimmerman/issues>
 
 
-* * * 
-
 Author
 ------
 
 Dexter B. Tad-y <dtady@cpan.org>
+
