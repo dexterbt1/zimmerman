@@ -6,6 +6,7 @@ my $build = Module::Build->new(
     license         => 'perl',
     build_requires  => {
         'perl'                      => '5.6.1',
+        'App::cpanminus'            => 0,
         'ExtUtils::MakeMaker'       => '6.31',
         'File::Copy::Recursive'     => 0,
         'YAML'                      => 0,

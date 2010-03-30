@@ -12,13 +12,13 @@ Why start yet another deployment system?
 ----------------------------------------
 
 First, this is *NOT* a Capistrano-clone in Perl nor a Shipwright-clone.
-It is neither a build-system that replaces to `make`, `rake`, `CPAN`, etc.
+It is NEITHER a build-system that replaces to `make`, `rake`, `CPAN`, etc.
 As described, it heavily borrows concepts from these systems.
 Zimmerman tries to be a simpler implementation with certain assumptions.
 
 This project was started because a deployment management tool is needed to fit
 a very specific company / workflow / codebase / team-training / time-cost-constraints. 
-This unique combination led us to either shop or build our own. We opted 
+This unique combination led us to either shop/buy or build our own. We opted 
 the latter.
 
 See and test for yourself if Zimmerman can help you simplify your deployment.
@@ -29,10 +29,10 @@ Goals
 
 * DRY [Don't Repeat Yourself] style deployment
 * Dependency tracking
-* On-the-fly pull and build - __as opposed to a pre-packaged distribution__
-* Upgrade / Rollback support - 
+* Upgrade / Rollback support
+* On-the-fly pull and build - as opposed to a pre-packaged distribution
 * Layered installs - installation under single $HOME
-* Perl-centric - yet should usable enough in non-perl projects
+* Perl-centric - yet should be usable enough in non-perl projects
 
 
 Requirements
@@ -41,7 +41,7 @@ Requirements
 * perl 5.8.x
 * CPAN Modules
     * ExtUtils::Utils 6.31
-    * App::cpanminus (http://github.com/miyagawa/cpanminus)
+    * [App::cpanminus](http://github.com/miyagawa/cpanminus)
     * File::Copy::Recursive
     * YAML
     * LWP
@@ -54,10 +54,10 @@ Install
 
 * via github, as root try:
     
-    cd /tmp
-    git clone git://github.com/dexterbt1/zimmerman.git
-    cd zimmerman
-    perl Build.PL && ./Build && ./Build test && ./Build install
+        cd /tmp
+        git clone git://github.com/dexterbt1/zimmerman.git
+        cd zimmerman
+        perl Build.PL && ./Build && ./Build test && ./Build install
 
 
 Meta
