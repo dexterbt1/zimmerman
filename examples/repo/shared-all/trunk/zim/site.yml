@@ -1,2 +1,6 @@
 --- 
-zim: "site"
+zim: site
+dependencies:
+    - zim:
+        site: "Hello-World"
+        site_branch: "trunk"

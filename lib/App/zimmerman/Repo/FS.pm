@@ -39,24 +39,23 @@ sub get_url {
 }
 
 
-sub load_siteconf {
+sub read_file {
     my ($self, %p) = @_;
     # read 
     ($self->is_valid_site_name($p{site}, $p{site_branch}))
         or croak "invalid site given site=(".$p{site}.") site_branch=(".$p{site_branch}.")";
     # read zim site config
-    my $siteconf_file = File::Spec->catfile(
+    my $full_repo_path = File::Spec->catfile(
         $self->get_base_uri("file")->path,
         $p{site},
         $p{site_branch},
-        $p{siteconf_path},
+        $p{file_path},
     );
-    open my $fh, $siteconf_file
-        or croak "Unable to open site configuration ($siteconf_file)";
+    open my $fh, $full_repo_path
+        or croak "Unable to open site configuration ($full_repo_path)";
     my $data = join('',<$fh>)
-        or croak "Unable to read site configuration ($siteconf_file)";
-    my $siteconf = App::zimmerman::SiteConfig->get_deserialized( $data );
-    return $siteconf;
+        or croak "Unable to read site configuration ($full_repo_path)";
+    return $data;
 }
 
 

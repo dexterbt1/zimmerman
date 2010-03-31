@@ -12,8 +12,8 @@ Why yet another deployment system?
 ----------------------------------
 
 First, this is *NOT* a Capistrano-clone in Perl nor a Shipwright-clone.
-It is NEITHER a build-system that replaces to `make`, `rake`, `CPAN`, etc.
-As described, it heavily borrows concepts from these systems.
+It is NEITHER a build-system that replaces `make`, `rake`, `CPAN`, etc.
+As described, it heavily borrows concepts and ideas from these systems.
 Zimmerman tries to be a simpler implementation with certain assumptions.
 
 This project was started because a deployment management tool is needed to fit

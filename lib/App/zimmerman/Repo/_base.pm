@@ -32,7 +32,7 @@ sub get_url {
     die "Unimplemented";
 }
 
-sub load_siteconf {
+sub read_file {
     die "Unimplemented";
 }
 

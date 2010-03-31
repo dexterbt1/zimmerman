@@ -89,16 +89,21 @@ sub start_site_deploy {
         or croak "Uninitialized 'repo' backend";
     my $siteconf;
     eval {
-        $siteconf = $repo->load_siteconf(
-            site                => $p{site},
-            site_branch         => $p{site_branch},
-            siteconf_path       => File::Spec->catfile($self->script->{siteconf_dir}, $self->script->{siteconf_file}),
+        my $siteconf_contents = $repo->read_file(
+            site        => $p{site},
+            site_branch => $p{site_branch},
+            file_path   => File::Spec->catfile($self->script->{siteconf_dir}, $self->script->{siteconf_file}),
         );
+        $siteconf = App::zimmerman::Config::Site->from_string( $siteconf_contents );
     };
     if ($@) { $self->help("! ERROR: $@"); }
 
-    my $site_url = $repo->get_url($p{site}, $p{site_branch});
+    # install dependencies
+    #foreach my $d ($siteconf->dependencies) {
+    #    
+    #}
 
+    # setup paths
     my $site_build_path = File::Spec->catdir( 
         $p{install_base_tmp},
         $self->script->{siteconf_dir},
@@ -114,7 +119,6 @@ sub start_site_deploy {
         $cache_export_path,
         $self->script->{scriptconf_export_config_file},
     );
-
 
     # compare cached revision to the current site branch revision
     my $use_cached_copy = 0; # assume cache is stale
@@ -134,6 +138,8 @@ sub start_site_deploy {
     }
 
     # export, whether from cache or new copy
+    my $site_url = $repo->get_url($p{site}, $p{site_branch});
+
     if (not $use_cached_copy) {
         $self->script->chat("Exporting fresh copy of site [$p{site}] from $site_url ... ");
         # we are unable to utilize the cache,
@@ -168,7 +174,7 @@ sub start_site_deploy {
         install_base_tmp    => $p{install_base_tmp},
     );
 
-}
+} # start_site_deploy
 
 
 

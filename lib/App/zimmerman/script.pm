@@ -10,11 +10,11 @@ use File::Basename;
 use File::Path;
 use File::Spec;
 use Pod::Usage;
+use App::zimmerman::Config::Export;
+use App::zimmerman::Config::Site;
+use App::zimmerman::Config::Release;
 use App::zimmerman::Command::_base;
 use App::zimmerman::Repo::_base;
-use App::zimmerman::Config::Export;
-use App::zimmerman::SiteConfig;
-use App::zimmerman::ReleaseConfig;
 use ExtUtils::MakeMaker 6.31;
 
 my $SCRIPTCONF_DIR                  = ".zim";
@@ -124,12 +124,12 @@ sub set_release_symlink {
         $self->{releaseconf_file},
     );
     if (-e $releaseconf_path) {
-        my $c = App::zimmerman::ReleaseConfig->from_file($releaseconf_path);
+        my $c = App::zimmerman::Config::Release->from_file($releaseconf_path);
         $c->{rollback_id} = $rollback_id;
         $c->save;
     }
     else {
-        my $c = App::zimmerman::ReleaseConfig->new();
+        my $c = App::zimmerman::Config::Release->new();
         $c->{rollback_id} = $rollback_id;
         $c->save($releaseconf_path);
     }
