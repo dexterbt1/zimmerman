@@ -12,16 +12,23 @@ use File::Spec;
 use Pod::Usage;
 use App::zimmerman::Command::_base;
 use App::zimmerman::Repo::_base;
+use App::zimmerman::Config::Export;
 use App::zimmerman::SiteConfig;
 use App::zimmerman::ReleaseConfig;
 use ExtUtils::MakeMaker 6.31;
 
-my $RELEASES_DIR        = "releases";
-my $CURRENT_LINK        = "current";
-my $SITECONF_DIR        = "zim";
-my $SITECONF_FILE       = "site.yml";
-my $RELEASECONF_DIR     = "zim";
-my $RELEASECONF_FILE    = "this_release.yml";
+my $SCRIPTCONF_DIR                  = ".zim";
+my $SCRIPTCONF_FILE                 = "zimrc";
+my $SCRIPTCONF_CACHED_EXPORTS       = "_cached_exports";
+my $SCRIPTCONF_EXPORT_CONFIG_FILE   = "_this_export.yml";
+
+my $SITECONF_DIR                = "zim";
+my $SITECONF_FILE               = "site.yml";
+
+my $CURRENT_LINK                = "current";
+my $RELEASES_DIR                = "releases";
+my $RELEASECONF_DIR             = "zim";
+my $RELEASECONF_FILE            = "_this_release.yml";
 
 sub new {
     my ($class, %p) = @_;
@@ -29,13 +36,17 @@ sub new {
     foreach my $k (keys %p) {
         $self->{$k} = $p{$k};
     }
-    $self->{script_name}        = basename $0;
-    $self->{siteconf_dir}       = $SITECONF_DIR;
-    $self->{siteconf_file}      = $SITECONF_FILE;
-    $self->{releases_dir}       = $RELEASES_DIR;
-    $self->{current_link}       = $CURRENT_LINK;
-    $self->{releaseconf_dir}    = $RELEASECONF_DIR;
-    $self->{releaseconf_file}   = $RELEASECONF_FILE;
+    $self->{script_name}            = basename $0;
+    $self->{siteconf_dir}           = $SITECONF_DIR;
+    $self->{siteconf_file}          = $SITECONF_FILE;
+    $self->{releases_dir}           = $RELEASES_DIR;
+    $self->{current_link}           = $CURRENT_LINK;
+    $self->{releaseconf_dir}        = $RELEASECONF_DIR;
+    $self->{releaseconf_file}       = $RELEASECONF_FILE;
+    $self->{scriptconf_export_config_file}          = $SCRIPTCONF_EXPORT_CONFIG_FILE;
+    $self->{scriptconf_path}                        = File::Spec->catdir($ENV{HOME}, $SCRIPTCONF_DIR);
+    $self->{scriptconf_filepath}                    = File::Spec->catdir($ENV{HOME}, $SCRIPTCONF_DIR, $SCRIPTCONF_FILE);
+    $self->{scriptconf_cached_exports_path}         = File::Spec->catdir($ENV{HOME}, $SCRIPTCONF_DIR, $SCRIPTCONF_CACHED_EXPORTS);
     return $self;
 }
 
@@ -44,8 +55,7 @@ sub load_config {
     my ($self, $arga, $argh) = @_;
     if (not exists $self->{rc}) {
         # set default config file
-        my $rcdir = File::Spec->catdir($ENV{HOME}, ".".$self->{script_name});
-        $self->{rc} = File::Spec->catfile($rcdir, $self->{script_name}."rc");
+        $self->{rc} = $self->{scriptconf_filepath};
     }
     eval {
         # configure based on rc
@@ -104,7 +114,7 @@ sub set_release_symlink {
             or die "Existing link ($link) cannot be deleted";
     }
 
-    # write release config, relative to install_base
+    # write release config, relative to install_base.
     # do this prior to symlinking to avoid race conditions / inconsistent states
     my $releaseconf_path = File::Spec->catdir(
         $p{install_base},
@@ -175,6 +185,7 @@ sub get_repo_backend {
 #        or die "Unable to find a suitable scm client";
     return $repo;
 }
+
 
 sub _get_site_scm_url {
     my ($self, $site_name, $branch) = @_;

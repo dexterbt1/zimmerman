@@ -60,6 +60,7 @@ sub load_siteconf {
 }
 
 
+# returns the unique revision id
 sub export_site {
     my ($self, %p) = @_;
     ($self->is_valid_site_name($p{site}, $p{site_branch}))
@@ -71,7 +72,7 @@ sub export_site {
     );
     my $export_to = $p{export_to}
         or croak "Undefined export_to destination";
-    my $dest = File::Spec->catdir( $p{export_to}, $p{siteconf_dir}, "_sources", $p{site} );
+    my $dest = $export_to;
     (File::Spec->file_name_is_absolute($dest))
         or croak "Invalid export_to destination ($export_to), expected absolute directory ";
     if (not (-d $dest and -w $dest)) {
@@ -79,7 +80,7 @@ sub export_site {
     }
     File::Copy::Recursive::rcopy( $source, $dest )
         or die "Failed Copy from [$source] to [$dest]";
-    return $dest;
+    return; # always return undef, given we don't have version tracking in a plain filesystem
 }
 
 

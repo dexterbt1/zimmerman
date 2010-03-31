@@ -6,26 +6,39 @@ use File::Copy;
 use File::Spec;
 use File::Path;
 use File::Basename;
+use File::Copy::Recursive;
 use POSIX qw/strftime/;
 use base qw/App::zimmerman::Command::_base/;
 
 
 sub run {
     my ($self, $arga, $argh) = @_;
+
+    # load backend repo
     my $repo_url = $argh->{repo} || $self->script->{repo} || '';
     ($repo_url)
         or $self->help("! ERROR: please specify a repository via --repo");
     my $repo = $self->script->get_repo_backend( url => $repo_url );
+
     my $site_name   = $argh->{site} || $self->script->{site} || '';
     my $site_branch = $argh->{site_branch} || $self->script->{site_branch} || '';
     ($site_name)
         or $self->help("! ERROR: please specify a site name");
     ($site_branch)
         or $self->help("! ERROR: please specify a site_branch");
+
     # verify install_base (destination)
     my $install_base = $argh->{install_base} || $self->script->{install_base} || '';
     ($self->script->is_valid_install_base($install_base))
         or $self->help("! ERROR: install_base='$install_base' is not a valid writeable directory");
+
+    $self->script->chat("# ". ("-" x 60) . "\n");
+    $self->script->chat("Using repo:            $repo_url\n");
+    $self->script->chat("Using site:            $site_name\n");
+    $self->script->chat("Using site_branch:     $site_branch\n");
+    $self->script->chat("Using install_base:    $install_base\n");
+    $self->script->chat("# ". ("-" x 60) . "\n");
+    
 
     # we need to generate a auto release_id in the pattern YYYYMMDDHHMMSS
     # this will be used 
@@ -50,6 +63,7 @@ sub run {
         seen_deps           => $seen_deps,
     );
 
+    $self->script->chat("# ". ("-" x 60) . "\n");
     $self->script->chat("Updating release symlink ... ");
     eval {
         $self->script->set_release_symlink(
@@ -82,38 +96,89 @@ sub start_site_deploy {
         );
     };
     if ($@) { $self->help("! ERROR: $@"); }
+
     my $site_url = $repo->get_url($p{site}, $p{site_branch});
-    $self->script->chat("Exporting site [$p{site}] from $site_url ... ");
-    my $site_build_dir = $repo->export_site( 
-        site                => $p{site},
-        site_branch         => $p{site_branch},
-        siteconf_dir        => $self->script->{siteconf_dir},
-        export_to           => $p{install_base_tmp},
+
+    my $site_build_path = File::Spec->catdir( 
+        $p{install_base_tmp},
+        $self->script->{siteconf_dir},
+        "_sources", 
+        $p{site}
     );
+    my $cache_export_path = File::Spec->catdir(
+        $self->script->{scriptconf_cached_exports_path},
+        $p{site},
+        $p{site_branch},
+    );
+    my $cache_export_config_filepath = File::Spec->catfile(
+        $cache_export_path,
+        $self->script->{scriptconf_export_config_file},
+    );
+
+
+    # compare cached revision to the current site branch revision
+    my $use_cached_copy = 0; # assume cache is stale
+    my $cached_site_rev;
+    eval {
+        my $xconf = App::zimmerman::Config::Export->from_file($cache_export_config_filepath);
+        $cached_site_rev = $xconf->{revision};
+    };
+    if (defined $cached_site_rev) {
+        my $current_site_rev = $repo->peek_site_revision(
+            site                => $p{site},
+            site_branch         => $p{site_branch},
+        );
+        if (defined($current_site_rev) and ($cached_site_rev eq $current_site_rev)) {
+            $use_cached_copy = 1;
+        }
+    }
+
+    # export, whether from cache or new copy
+    if (not $use_cached_copy) {
+        $self->script->chat("Exporting fresh copy of site [$p{site}] from $site_url ... ");
+        # we are unable to utilize the cache,
+        # we need a fresh export from repository
+        if (-e $cache_export_path) {
+            rmtree $cache_export_path; # TODO: assumes this succeeds always
+        }
+        my $revision = $repo->export_site( 
+            site                => $p{site},
+            site_branch         => $p{site_branch},
+            export_to           => $cache_export_path,
+        );
+        my $exportconfig_file = App::zimmerman::Config::Export->new;
+        $exportconfig_file->{revision} = $revision;
+        $exportconfig_file->save( $cache_export_config_filepath );
+    }
+    else {
+        $self->script->chat("Exporting from CACHED copy of site [$p{site}] ... ");
+    }
+
+    # from here assume export was successful
+    File::Copy::Recursive::rcopy( $cache_export_path, $site_build_path )
+        or die "Failed export copy from [$cache_export_path] to [$site_build_path]";
     $self->script->chat("OK\n");
+
+
     $self->build_test_install(
         site                => $p{site},
         release_id          => $p{release_id},
-        site_build_dir      => $site_build_dir,
+        site_build_path     => $site_build_path,
         install_base        => $p{install_base},
         install_base_tmp    => $p{install_base_tmp},
     );
 
-=pod
-    $self->install_deps( ... ) # recursive
-    $self->build_test_install( ... )
-
-=cut
 }
+
 
 
 sub build_test_install {
     my ($self, %p) = @_;
-    my $build_dir = $p{site_build_dir} || '';
+    my $build_path = $p{site_build_path} || '';
     my $home = $p{install_base_tmp} || '';
     # double check dirs just to be sure
-    (-d $build_dir && -w $build_dir)
-        or croak "non-existent site_build_dir";
+    (-d $build_path && -w $build_path)
+        or croak "non-existent site_build_path";
     (-d $home && -w $home)
         or croak "non-existent install_base_tmp";
 
@@ -134,7 +199,7 @@ sub build_test_install {
             $build_step,
         );
         my $script = File::Spec->catfile(
-            $build_dir, 
+            $build_path, 
             $self->script->{siteconf_dir},
             'build',
             $build_step,
@@ -148,8 +213,8 @@ sub build_test_install {
             (defined $pid) 
                 or die "fork call is not supported on this platform";
             if ($pid == 0) {
-                chdir $build_dir
-                    or die "Unable to change directory to build_dir ($build_dir)";
+                chdir $build_path
+                    or die "Unable to change directory to build_dir ($build_path)";
                 open STDERR, ">>$build_logfile"
                     or die "Unable to redirect STDERR to build log ($build_logfile)";
                 open STDOUT, ">>$build_logfile"

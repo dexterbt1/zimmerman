@@ -1,9 +1,6 @@
-package App::zimmerman::ReleaseConfig;
+package App::zimmerman::Config::Export;
 use strict;
 use YAML qw/Load DumpFile/;
-
-# release config files are generated after every success release.
-# release config files are also updated just before symlinking.
 
 sub new {
     my ($class, %p) = @_;
@@ -12,7 +9,7 @@ sub new {
         $self->{$k} = $p{$k};
     }
     if (not exists $self->{zim}) {
-        $self->{zim} = 'release';
+        $self->{zim} = 'export';
     }
     return $self;
 }
@@ -20,9 +17,9 @@ sub new {
 sub from_file {
     my ($class, $file_name) = @_;
     open my $relfh, $file_name
-        or die "Unable to open release config file ($file_name): $!";
+        or die "Unable to open file ($file_name): $!";
     my $all_lines = join('', <$relfh>)
-        or die "Unable to read release config file ($file_name): $!";
+        or die "Unable to read file ($file_name): $!";
     my $href = Load($all_lines);
     my $self;
     if (ref($href) eq 'HASH') {
@@ -44,8 +41,8 @@ sub get_deserialized {
     (ref($data) eq 'HASH')
         or die "Encountered invalid YAML data for release config";
     my $self = bless $data, $class;
-    ($self->{zim} eq 'release')
-        or die "Malformed release config";
+    ($self->{zim} eq 'export')
+        or die "Malformed config";
     return $self;
 }
 
@@ -60,4 +57,5 @@ sub save {
 1;
 
 __END__
+
 
