@@ -79,6 +79,11 @@ sub export_site {
     }
     File::Copy::Recursive::rcopy( $source, $dest )
         or die "Failed Copy from [$source] to [$dest]";
+    return 1; # always 1 given that later, when we try to use peek_site_revision(), the two won't match
+}
+
+
+sub peek_site_revision {
     return; # always return undef, given we don't have version tracking in a plain filesystem
 }
 

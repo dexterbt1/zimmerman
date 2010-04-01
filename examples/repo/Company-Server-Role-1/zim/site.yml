@@ -1,0 +1,9 @@
+---
+zim: site
+dependency:
+    - zim:
+        site: shared-all
+        site_branch: trunk
+    - zim:
+        site: Hello-World
+        site_branch: trunk

@@ -40,6 +40,10 @@ sub export {
     die "Unimplemented";
 }
 
+sub peek_site_revision {
+    die "Unimplemented";
+}
+
 1;
 
 __END__

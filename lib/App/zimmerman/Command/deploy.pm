@@ -24,8 +24,6 @@ sub run {
     my $site_branch = $argh->{site_branch} || $self->script->{site_branch} || '';
     ($site_name)
         or $self->help("! ERROR: please specify a site name");
-    ($site_branch)
-        or $self->help("! ERROR: please specify a site_branch");
 
     # verify install_base (destination)
     my $install_base = $argh->{install_base} || $self->script->{install_base} || '';
@@ -35,7 +33,9 @@ sub run {
     $self->script->chat("# ". ("-" x 60) . "\n");
     $self->script->chat("Using repo:            $repo_url\n");
     $self->script->chat("Using site:            $site_name\n");
-    $self->script->chat("Using site_branch:     $site_branch\n");
+    if ($site_branch) {
+        $self->script->chat("Using site_branch:     $site_branch\n");
+    }
     $self->script->chat("Using install_base:    $install_base\n");
     $self->script->chat("# ". ("-" x 60) . "\n");
     
@@ -96,7 +96,7 @@ sub start_site_deploy {
         );
         $siteconf = App::zimmerman::Config::Site->from_string( $siteconf_contents );
     };
-    if ($@) { $self->help("! ERROR: $@"); }
+    if ($@) { die "! ERROR: $@"; }
 
     # install dependencies
     #foreach my $d ($siteconf->dependencies) {
@@ -113,7 +113,7 @@ sub start_site_deploy {
     my $cache_export_path = File::Spec->catdir(
         $self->script->{scriptconf_cached_exports_path},
         $p{site},
-        $p{site_branch},
+        $p{site_branch} || '_default',
     );
     my $cache_export_config_filepath = File::Spec->catfile(
         $cache_export_path,
@@ -141,7 +141,7 @@ sub start_site_deploy {
     my $site_url = $repo->get_url($p{site}, $p{site_branch});
 
     if (not $use_cached_copy) {
-        $self->script->chat("Exporting fresh copy of site [$p{site}] from $site_url ... ");
+        $self->script->chat("Exporting fresh copy of site=[$p{site}] site_branch=[$p{site_branch}] from $site_url ... ");
         # we are unable to utilize the cache,
         # we need a fresh export from repository
         if (-e $cache_export_path) {
@@ -157,7 +157,7 @@ sub start_site_deploy {
         $exportconfig_file->save( $cache_export_config_filepath );
     }
     else {
-        $self->script->chat("Exporting from CACHED copy of site [$p{site}] ... ");
+        $self->script->chat("Reusing previously CACHED export of site=[$p{site}] site_branch=[$p{site_branch}] ... ");
     }
 
     # from here assume export was successful
@@ -322,6 +322,15 @@ The root repository URI that contains the site repositories.
 
 *REQUIRED. Run C<configure> to persist this setting.
 
+=item --install_base
+
+The base path to where deployed sites will be anchored.
+Each deploy will create a new directory under C<$install_base/releases/xxxxxxx>.
+A symlink C<$install_base/current> will always point to the
+last deployed release.
+
+*REQUIRED. Run C<configure> to persist this setting.
+
 =item --site
 
 The site name. Resolved in the repository as C<$repo/$site_name>.
@@ -333,16 +342,7 @@ Should be a basename string and not a path. See --site_branch for branching supp
 
 Site branch. When given, repository is resolved as C<$repo/$site_name/$site_branch>.
 
-*REQUIRED. Run C<configure> to persist this setting.
-
-=item --install_base
-
-The base path to where deployed sites will be anchored.
-Each deploy will create a new directory under C<$install_base/releases/xxxxxxx>.
-A symlink C<$install_base/current> will always point to the
-last deployed release.
-
-*REQUIRED. Run C<configure> to persist this setting.
+*OPTIONAL. Run C<configure> to persist this setting.
 
 =back
 

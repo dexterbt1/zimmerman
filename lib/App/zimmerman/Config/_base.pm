@@ -1,5 +1,6 @@
 package App::zimmerman::Config::_base;
 use strict;
+use Carp;
 use YAML qw/Load DumpFile/;
 
 sub new {
@@ -51,6 +52,14 @@ sub save {
     my ($self, $tmp_file_name) = @_;
     my $file_name = $tmp_file_name || $self->{file_name} || '';
     DumpFile($file_name, $self);
+}
+
+
+sub set_file_name {
+    my ($self, $fn) = @_;
+    ($fn)
+        or croak "Invalid filename";
+    $self->{file_name} = $fn;
 }
 
 

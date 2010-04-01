@@ -91,6 +91,47 @@ sub dispatch {
 
 # ================ commons API
 
+sub get_release_config_filepath {
+    my ($self, %p) = @_;
+    ($p{install_base})
+        or croak "install_base required";
+    ($p{release_id})
+        or croak "release_id required";
+    my $path = File::Spec->catdir(
+        $p{install_base},
+        $self->{releases_dir}, 
+        $p{release_id},
+        $self->{releaseconf_dir}, 
+        $self->{releaseconf_file},
+    );
+    return $path;
+}
+
+sub get_current_release_config {
+    my ($self, %p) = @_;
+    ($p{install_base})
+        or croak "install_base required";
+    my $link_path = File::Spec->catdir($p{install_base}, $self->{current_link});
+    (-l $link_path)
+        or die "Cannot find current release symlink at $link_path";
+    my $pointing_to = readlink($link_path);
+    my $current_release_path = File::Spec->catdir($p{install_base}, $pointing_to);
+    (-d $current_release_path)
+        or die "current symlink does not seem to point to a release directory";
+    my $c;
+    eval {
+        my $path = File::Spec->catdir(
+            $current_release_path,
+            $self->{releaseconf_dir}, 
+            $self->{releaseconf_file},
+        );
+        $c = App::zimmerman::Config::Release->from_file($path);
+    };
+    if ($@) {
+        die "current symlink points to a release directory";
+    }
+    return $c;
+}
 
 sub set_release_symlink {
     my ($self, %p) = @_;
@@ -102,36 +143,55 @@ sub set_release_symlink {
     ($p{install_base} and -d $p{install_base})
         or croak "Invalid install_base";
 
-    my $link = File::Spec->catdir($p{install_base}, $self->{current_link});
-    
-    # note the latest dest
     my $rollback_id;
-    if (-e $link) {
-        # TODO: for now assume that the release_id is the basename
-        my $pointing_to = readlink($link);
-        $rollback_id = ($pointing_to) ? basename($pointing_to) : undef;
-        unlink $link 
-            or die "Existing link ($link) cannot be deleted";
+    my $current_release_config;
+    eval {
+        $current_release_config = $self->get_current_release_config(
+            install_base            => $p{install_base},
+        );
+    };
+    if ($@) {
+        # nop
+        # here, it means there is no current release yet (this is the initial release)
     }
 
-    # write release config, relative to install_base.
-    # do this prior to symlinking to avoid race conditions / inconsistent states
-    my $releaseconf_path = File::Spec->catdir(
-        $p{install_base},
-        $self->{releases_dir}, 
-        $p{release_id},
-        $self->{releaseconf_dir}, 
-        $self->{releaseconf_file},
+    if ($current_release_config) {
+        $rollback_id = $current_release_config->{release_id};
+    }
+    
+    # note the latest release_id
+    if (defined $rollback_id) {
+        ($rollback_id =~ /^\d{14}$/)
+            or die "Invalid release ID";
+    }
+
+    # current_release refers to the release pointed to by "current" symlink
+    # this_release refers to this release we want "current" symlink to be repointed
+
+    my $this_release_config_filepath = $self->get_release_config_filepath(
+        install_base        => $p{install_base},
+        release_id          => $p{release_id},
     );
-    if (-e $releaseconf_path) {
-        my $c = App::zimmerman::Config::Release->from_file($releaseconf_path);
-        $c->{rollback_id} = $rollback_id;
-        $c->save;
+    my $this_release_config;
+    if (-e $this_release_config_filepath) {
+        $this_release_config = App::zimmerman::Config::Release->from_file( $this_release_config_filepath );
     }
     else {
-        my $c = App::zimmerman::Config::Release->new();
-        $c->{rollback_id} = $rollback_id;
-        $c->save($releaseconf_path);
+        $this_release_config = App::zimmerman::Config::Release->new;
+        $this_release_config->set_file_name( $this_release_config_filepath );
+    }
+    $this_release_config->{release_id} = $p{release_id};
+    $this_release_config->{rollback_id} = $rollback_id;
+    $this_release_config->save();
+
+    # TODO:
+    # set the rollforward_id
+
+    # here, we attempt to delete the current symlink so that we can repoint it to this_release
+    my $current_link_path = File::Spec->catdir($p{install_base}, $self->{current_link});
+    if (-l $current_link_path) {
+        unlink $current_link_path
+            or die "Existing current link ($current_link_path) cannot be deleted";
     }
         
     # point the link (relative link), via a child process
@@ -154,7 +214,7 @@ sub set_release_symlink {
         waitpid $pid, 0;
         my $code = $?;
         if ($code != 0) {
-            die "Unable to symlink ($link) to ($link_dest)";
+            die "Unable to symlink ($current_link_path) to ($link_dest)";
         }
     }
 }
