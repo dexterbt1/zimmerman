@@ -106,6 +106,36 @@ sub start_site_deploy {
             ($dep_type eq 'zim') and do {
                 my $dep_site = $dep_info->{site};
                 my $dep_site_branch = $dep_info->{site_branch};
+                if (exists($p{seen_deps}->{$dep_site}) and $p{seen_deps}->{$dep_site} eq $dep_site_branch) {
+                    next; # next dependency since we're already building this in the pipeline
+                }
+                $p{seen_deps}->{$dep_site} = $dep_site_branch;
+                my %subp = %p;
+                if ($dep_info->{repo}) {
+                    # site dependency points to another repo, use this
+                    $subp{repo} = $self->script->get_repo_backend( url => $dep_info->{repo});
+                }
+                $subp{site}         = $dep_site;
+                $subp{site_branch}  = $dep_site_branch || '';
+                $self->script->chat("Dependency found site=[$dep_site] ");
+                if ($dep_site_branch) { 
+                    $self->script->chat("site_branch=[$dep_site_branch]");
+                }
+                $self->script->chat("\n");
+                $self->start_site_deploy( %subp );
+                last SWITCH;
+            };
+            ($dep_type eq 'cpan') and do {
+                my $module_name = $dep_info->{module};
+                if (exists($p{seen_deps}->{'@cpan:'.$module_name})) {
+                    next;
+                }
+                $self->script->chat("Dependency found CPAN module=[$module_name]\n");
+                $p{seen_deps}->{'@cpan:'.$module_name} = 1;
+                $self->start_cpan_deploy(
+                    install_base    => $p{install_base_tmp},
+                    modules         => [ $module_name ],
+                );
                 last SWITCH;
             };
             die "Unknown type of dependencies encountered: ".Dump($dep_type, $dep_info);
@@ -177,7 +207,7 @@ sub start_site_deploy {
     $self->script->chat("OK\n");
 
 
-    $self->build_test_install(
+    $self->build_site(
         site                => $p{site},
         release_id          => $p{release_id},
         site_build_path     => $site_build_path,
@@ -189,7 +219,7 @@ sub start_site_deploy {
 
 
 
-sub build_test_install {
+sub build_site {
     my ($self, %p) = @_;
     my $build_path = $p{site_build_path} || '';
     my $home = $p{install_base_tmp} || '';
@@ -279,8 +309,45 @@ sub build_test_install {
         mkpath $dest_dir;
     }
     my $dest = File::Spec->catdir($dest_dir, $p{release_id});
-    File::Copy::move( $src, $dest)
-        or die "unable to move tmp releases from $src to $dest: $!";
+    #File::Copy::move( $src, $dest)
+    #    or die "unable to overrtmp releases from $src to $dest: $!";
+    File::Copy::Recursive::rcopy( $src, $dest )
+        or die "unable to overrtmp releases from $src to $dest: $!";
+}
+
+
+
+sub start_cpan_deploy {
+    my ($self, %p) = @_;
+    my $install_base = $p{install_base};
+    ($install_base)
+        or die "Unspecified install_base";
+    my $cpan_client = qx{which cpanm}; chomp $cpan_client;
+    ($cpan_client)
+        or die "Unable to find cpanminus binary (cpanm)";
+    my @cmds = (
+        $cpan_client,
+        sprintf("--local-lib=%s",$install_base),
+        #sprintf("--verbose"),
+        @{$p{modules}},
+    );
+    my $pid = fork;
+    (defined $pid)
+        or die "fork is not supported in this platform";
+    if ($pid == 0) {
+        # child
+        chdir $install_base;
+        my $b = join(' ',@cmds);
+        exec $b;
+        exit(0);
+    }
+    else {
+        # parent
+        waitpid $pid, 0;
+        if ($? != 0) {
+            die "Failed cpan install for module(s): ".join(", ", @{$p{modules}});
+        }
+    }
 }
 
 

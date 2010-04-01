@@ -10,14 +10,11 @@ sub dependencies {
     my ($self) = @_;
     my @out = ();
     if (exists $self->{dependencies}) {
-        warn "Site config posssible typo expected 'dependency' but seen 'dependencies'";
-    }
-    if (exists $self->{dependency}) {
-        (defined $self->{dependency})
+        (defined $self->{dependencies})
             or die "site dependency definition cannot be null";
-        (ref($self->{dependency}) eq 'ARRAY')
+        (ref($self->{dependencies}) eq 'ARRAY')
             or die "site dependency definition is expected as an array";
-        foreach my $df (@{$self->{dependency}}) {
+        foreach my $df (@{$self->{dependencies}}) {
             (defined($df) and (ref($df) eq 'HASH'))
                 or die "site dependency item error at: ".Dump($df);
             my ($type, $dep_info) = each %$df;
