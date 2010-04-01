@@ -8,6 +8,7 @@ use File::Path;
 use File::Basename;
 use File::Copy::Recursive;
 use POSIX qw/strftime/;
+use YAML;
 use base qw/App::zimmerman::Command::_base/;
 
 
@@ -99,9 +100,18 @@ sub start_site_deploy {
     if ($@) { die "! ERROR: $@"; }
 
     # install dependencies
-    #foreach my $d ($siteconf->dependencies) {
-    #    
-    #}
+    foreach my $df ($siteconf->dependencies) {
+        my ($dep_type, $dep_info) = @$df;
+        SWITCH: {
+            ($dep_type eq 'zim') and do {
+                my $dep_site = $dep_info->{site};
+                my $dep_site_branch = $dep_info->{site_branch};
+                last SWITCH;
+            };
+            die "Unknown type of dependencies encountered: ".Dump($dep_type, $dep_info);
+            last SWITCH;
+        }
+    }
 
     # setup paths
     my $site_build_path = File::Spec->catdir( 
@@ -139,9 +149,10 @@ sub start_site_deploy {
 
     # export, whether from cache or new copy
     my $site_url = $repo->get_url($p{site}, $p{site_branch});
+    my $site_branch_info = $p{site_branch} ? sprintf("site_branch=[%s] ",$p{site_branch}) : '';
 
     if (not $use_cached_copy) {
-        $self->script->chat("Exporting fresh copy of site=[$p{site}] site_branch=[$p{site_branch}] from $site_url ... ");
+        $self->script->chat("Exporting fresh copy of site=[$p{site}] ${site_branch_info}from $site_url ... ");
         # we are unable to utilize the cache,
         # we need a fresh export from repository
         if (-e $cache_export_path) {
@@ -157,7 +168,7 @@ sub start_site_deploy {
         $exportconfig_file->save( $cache_export_config_filepath );
     }
     else {
-        $self->script->chat("Reusing previously CACHED export of site=[$p{site}] site_branch=[$p{site_branch}] ... ");
+        $self->script->chat("Reusing previously CACHED export of site=[$p{site}] ${site_branch_info}... ");
     }
 
     # from here assume export was successful
