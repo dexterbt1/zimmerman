@@ -2,7 +2,7 @@
 zim: site
 dependencies:
     - cpan:
-        module: "DateTime"
+        module: "Class::LazyFactory"
     - zim:
         site: shared-all
         site_branch: trunk

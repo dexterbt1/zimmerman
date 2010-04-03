@@ -5,11 +5,13 @@ use Carp;
 use URI;
 use Data::Dumper;
 use YAML qw/LoadFile/;
+use Pod::Usage ();
+use File::Basename ();
+use File::Path ();
+use File::Spec ();
 use Pod::Usage;
-use File::Basename;
-use File::Path;
-use File::Spec;
-use Pod::Usage;
+use Term::Prompt ();
+use App::zimmerman;
 use App::zimmerman::Config::Export;
 use App::zimmerman::Config::Site;
 use App::zimmerman::Config::Release;
@@ -36,7 +38,7 @@ sub new {
     foreach my $k (keys %p) {
         $self->{$k} = $p{$k};
     }
-    $self->{script_name}            = basename $0;
+    $self->{script_name}            = File::Basename::basename $0;
     $self->{siteconf_dir}           = $SITECONF_DIR;
     $self->{siteconf_file}          = $SITECONF_FILE;
     $self->{releases_dir}           = $RELEASES_DIR;
@@ -142,6 +144,8 @@ sub set_release_symlink {
         or croak "Invalid release_id";
     ($p{install_base} and -d $p{install_base})
         or croak "Invalid install_base";
+    ($p{release_origin})
+        or croak "Invalid release_origin";
 
     my $rollback_id;
     my $current_release_config;
@@ -180,8 +184,9 @@ sub set_release_symlink {
         $this_release_config = App::zimmerman::Config::Release->new;
         $this_release_config->set_file_name( $this_release_config_filepath );
     }
-    $this_release_config->{release_id} = $p{release_id};
-    $this_release_config->{rollback_id} = $rollback_id;
+    $this_release_config->{release_id}              = $p{release_id};
+    $this_release_config->{release_origin}          = $p{release_origin};
+    $this_release_config->{rollback_id}             = $rollback_id;
     $this_release_config->save();
 
     # TODO:
@@ -245,6 +250,13 @@ sub get_repo_backend {
 #        or die "Unable to find a suitable scm client";
     return $repo;
 }
+
+
+sub get_release_origin_string {
+    my ($self, $site_name, $site_branch) = @_;
+    return join(';', "site=$site_name", "site_branch=$site_branch");
+}
+
 
 
 sub _get_site_scm_url {

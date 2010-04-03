@@ -2,11 +2,12 @@ package App::zimmerman::Command::deploy;
 use strict;
 use warnings;
 use Carp;
-use File::Copy;
-use File::Spec;
-use File::Path;
-use File::Basename;
-use File::Copy::Recursive;
+use File::Copy ();
+use File::Spec ();
+use File::Path ();
+use File::Basename ();
+use File::Copy::Recursive ();
+use Term::Prompt ();
 use POSIX qw/strftime/;
 use YAML;
 use base qw/App::zimmerman::Command::_base/;
@@ -40,13 +41,35 @@ sub run {
     $self->script->chat("Using install_base:    $install_base\n");
     $self->script->chat("# ". ("-" x 60) . "\n");
     
+    # double check if site is not the same as with the currently deployed release
+    my $current_release = $self->script->get_current_release_config( install_base => $install_base );
+    my $current_origin = $current_release->get_release_origin;
+    my $release_origin = $self->script->get_release_origin_string( $site_name, $site_branch );
+    if ($current_origin ne $release_origin) {
+        $self->script->chat("!!! WARNING:\n");
+        $self->script->chat("    About to deploy a site that does not match the existing installation ...\n");
+        $self->script->chat("           Existing        [$current_origin]\n");
+        $self->script->chat("           You requested   [$release_origin]\n");
+        $self->script->chat("\n");
+        my $cont = Term::Prompt::prompt(
+            'y', 
+            "Continue with deploy?",
+            "y/N",
+            "N",
+        );
+        if (not $cont) {
+            $self->script->chat("! ABORTED.\n");
+            exit(1);
+        }
+    }
+
 
     # we need to generate a auto release_id in the pattern YYYYMMDDHHMMSS
     # this will be used 
     my $release_id = $self->get_auto_release_id();
     my $tmp_base = File::Spec->catdir($install_base, '_tmp', $release_id);
     if (not -e $tmp_base) {
-        mkpath $tmp_base;
+        File::Path::mkpath( $tmp_base );
         $self->{_build_errors} = 0;
         $self->{_tmp_base_created} = 1;
         $self->{_tmp_base} = $tmp_base;
@@ -75,6 +98,7 @@ sub run {
             release_id          => $release_id,
             install_base        => $install_base,
             install_base_tmp    => $tmp_base,
+            release_origin      => $release_origin,
         );
     };
     if ($@) {
@@ -95,7 +119,6 @@ sub start_site_deploy {
     my $siteconf;
     my $this_site_display = 'site=['.$p{site}.']';
     my $this_site_branch_display = $p{site_branch} ? "site_branch=[".$p{site_branch}."] " : '';
-    $self->script->chat("Deploying @".$p{depth_count}." $this_site_display $this_site_branch_display\n");
     eval {
         my $siteconf_contents = $repo->read_file(
             site        => $p{site},
@@ -113,7 +136,7 @@ sub start_site_deploy {
             ($dep_type eq 'zim') and do {
                 my $dep_site = $dep_info->{site};
                 my $dep_site_branch = $dep_info->{site_branch} || '';
-                my $dep_site_branch_display = ($dep_site_branch) ? "dep_site_branch=[$dep_site_branch] " : '';
+                my $dep_site_branch_display = ($dep_site_branch) ? "site_branch=[$dep_site_branch] " : '';
                 if (exists($p{seen_deps}->{zim}->{$dep_site}) and $p{seen_deps}->{zim}->{$dep_site} eq $dep_site_branch) {
                     ####next; # next dependency since we're already building this in the pipeline
                     die "! Circular dependency to dep_site=[$dep_site] $dep_site_branch_display";
@@ -192,7 +215,7 @@ sub start_site_deploy {
         # we are unable to utilize the cache,
         # we need a fresh export from repository
         if (-e $cache_export_path) {
-            rmtree $cache_export_path; # TODO: assumes this succeeds always
+            File::Path::rmtree( $cache_export_path ); # TODO: assumes this succeeds always
         }
         my $revision = $repo->export_site( 
             site                => $p{site},
@@ -220,6 +243,8 @@ sub start_site_deploy {
         install_base        => $p{install_base},
         install_base_tmp    => $p{install_base_tmp},
     );
+
+    $self->script->chat("Installed $this_site_display $this_site_branch_display\n");
 
 } # start_site_deploy
 
@@ -312,7 +337,7 @@ sub build_site {
         die "releases directory at ($dest_dir) is not a directory";
     }
     if (not -e $dest_dir) {
-        mkpath $dest_dir;
+        File::Path::mkpath( $dest_dir );
     }
     my $dest = File::Spec->catdir($dest_dir, $p{release_id});
     #File::Copy::move( $src, $dest)
@@ -382,7 +407,7 @@ sub DESTROY {
     #if ($self->{_tmp_base_created} and not($self->{_build_errors})) {
     if ($self->{_tmp_base_created}) {
         if (-e $self->{_tmp_base}) {
-            rmtree $self->{_tmp_base};
+            File::Path::rmtree( $self->{_tmp_base} );
         }
     }
 }
