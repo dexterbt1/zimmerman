@@ -52,8 +52,11 @@ sub run {
         $self->{_tmp_base} = $tmp_base;
     }
 
-    my $seen_deps = { };
-    $seen_deps->{$site_name} = $site_branch;
+    my $seen_deps = { 
+        zim     => { },
+        cpan    => { },
+    };
+    $seen_deps->{zim}->{$site_name} = $site_branch;
     $self->start_site_deploy( 
         repo                => $repo,
         release_id          => $release_id,
@@ -62,6 +65,7 @@ sub run {
         install_base        => $install_base,
         install_base_tmp    => $tmp_base,
         seen_deps           => $seen_deps,
+        depth_count         => 1,
     );
 
     $self->script->chat("# ". ("-" x 60) . "\n");
@@ -89,6 +93,9 @@ sub start_site_deploy {
     my $repo = $p{repo}
         or croak "Uninitialized 'repo' backend";
     my $siteconf;
+    my $this_site_display = 'site=['.$p{site}.']';
+    my $this_site_branch_display = $p{site_branch} ? "site_branch=[".$p{site_branch}."] " : '';
+    $self->script->chat("Deploying @".$p{depth_count}." $this_site_display $this_site_branch_display\n");
     eval {
         my $siteconf_contents = $repo->read_file(
             site        => $p{site},
@@ -105,40 +112,39 @@ sub start_site_deploy {
         SWITCH: {
             ($dep_type eq 'zim') and do {
                 my $dep_site = $dep_info->{site};
-                my $dep_site_branch = $dep_info->{site_branch};
-                if (exists($p{seen_deps}->{$dep_site}) and $p{seen_deps}->{$dep_site} eq $dep_site_branch) {
-                    next; # next dependency since we're already building this in the pipeline
+                my $dep_site_branch = $dep_info->{site_branch} || '';
+                my $dep_site_branch_display = ($dep_site_branch) ? "dep_site_branch=[$dep_site_branch] " : '';
+                if (exists($p{seen_deps}->{zim}->{$dep_site}) and $p{seen_deps}->{zim}->{$dep_site} eq $dep_site_branch) {
+                    ####next; # next dependency since we're already building this in the pipeline
+                    die "! Circular dependency to dep_site=[$dep_site] $dep_site_branch_display";
                 }
-                $p{seen_deps}->{$dep_site} = $dep_site_branch;
+                $p{seen_deps}->{zim}->{$dep_site} = $dep_site_branch;
                 my %subp = %p;
                 if ($dep_info->{repo}) {
                     # site dependency points to another repo, use this
                     $subp{repo} = $self->script->get_repo_backend( url => $dep_info->{repo});
                 }
+                $self->script->chat("Dependency found site=[$dep_site] $dep_site_branch_display\n");
                 $subp{site}         = $dep_site;
-                $subp{site_branch}  = $dep_site_branch || '';
-                $self->script->chat("Dependency found site=[$dep_site] ");
-                if ($dep_site_branch) { 
-                    $self->script->chat("site_branch=[$dep_site_branch]");
-                }
-                $self->script->chat("\n");
+                $subp{site_branch}  = $dep_site_branch;
+                $subp{depth_count} += 1;
                 $self->start_site_deploy( %subp );
                 last SWITCH;
             };
             ($dep_type eq 'cpan') and do {
                 my $module_name = $dep_info->{module};
-                if (exists($p{seen_deps}->{'@cpan:'.$module_name})) {
+                if (exists($p{seen_deps}->{cpan}->{$module_name})) {
                     next;
                 }
                 $self->script->chat("Dependency found CPAN module=[$module_name]\n");
-                $p{seen_deps}->{'@cpan:'.$module_name} = 1;
+                $p{seen_deps}->{cpan}->{$module_name} = 1;
                 $self->start_cpan_deploy(
                     install_base    => $p{install_base_tmp},
                     modules         => [ $module_name ],
                 );
                 last SWITCH;
             };
-            die "Unknown type of dependencies encountered: ".Dump($dep_type, $dep_info);
+            die "Unsupported type of dependency encountered: ".Dump($dep_type, $dep_info);
             last SWITCH;
         }
     }

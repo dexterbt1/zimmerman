@@ -4,3 +4,5 @@ dependencies:
     - zim:
         site: "Hello-World"
         site_branch: "trunk"
+    - cpan:
+        module: "Class::LazyFactory"

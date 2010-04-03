@@ -139,7 +139,7 @@ sub set_release_symlink {
     ($symlink_supported)
         or die "symbolic links are not supported on this platform";
     ($p{release_id})
-        or croak "Invalid install_base";
+        or croak "Invalid release_id";
     ($p{install_base} and -d $p{install_base})
         or croak "Invalid install_base";
 
