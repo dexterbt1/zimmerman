@@ -113,6 +113,10 @@ sub get_current_release_config {
     ($p{install_base})
         or croak "install_base required";
     my $link_path = File::Spec->catdir($p{install_base}, $self->{current_link});
+    if (not -e $link_path) {
+        return;
+    }
+        
     (-l $link_path)
         or die "Cannot find current release symlink at $link_path";
     my $pointing_to = readlink($link_path);

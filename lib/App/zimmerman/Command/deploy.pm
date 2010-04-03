@@ -41,47 +41,49 @@ sub run {
     $self->script->chat("Using install_base:    $install_base\n");
     $self->script->chat("# ". ("-" x 60) . "\n");
     
-    my $current_release = $self->script->get_current_release_config( install_base => $install_base );
-    my $current_origin = $current_release->get_release_origin;
     my $release_origin = $self->script->get_release_origin_string( $site_name, $site_branch );
-    if ($current_origin eq $release_origin) {
-        # check if any of the dependencies have changed
-        my $updates = $self->count_updated_dependencies(
-            $current_release,
-            $repo_url, 
-            $site_name, 
-            $site_branch
-        );
-        if ($updates < 1) {
-            $self->script->chat("Site and dependencies are already up-to-date.\n");
+    my $current_release = $self->script->get_current_release_config( install_base => $install_base );
+    if (defined $current_release) {
+        my $current_origin = $current_release->get_release_origin;
+        if ($current_origin eq $release_origin) {
+            # check if any of the dependencies have changed
+            my $updates = $self->count_updated_dependencies(
+                $current_release,
+                $repo_url, 
+                $site_name, 
+                $site_branch
+            );
+            if ($updates < 1) {
+                $self->script->chat("Site and dependencies are already up-to-date.\n");
+            }
+            my $cont = Term::Prompt::prompt(
+                'y', 
+                "Continue with deploy?",
+                "y/N",
+                "N",
+            );
+            if (not $cont) {
+                $self->script->chat("! ABORTED.\n");
+                exit(1);
+            }
         }
-        my $cont = Term::Prompt::prompt(
-            'y', 
-            "Continue with deploy?",
-            "y/N",
-            "N",
-        );
-        if (not $cont) {
-            $self->script->chat("! ABORTED.\n");
-            exit(1);
-        }
-    }
-    else {
-        # site is not the same as with the currently deployed release, then we warn the user
-        $self->script->chat("!!! WARNING:\n");
-        $self->script->chat("    You are about to deploy a site that does NOT match the existing installation ...\n");
-        $self->script->chat("           Existing        =>  [$current_origin]\n");
-        $self->script->chat("           You requested   =>  [$release_origin]\n");
-        $self->script->chat("\n");
-        my $cont = Term::Prompt::prompt(
-            'y', 
-            "Continue with deploy?",
-            "y/N",
-            "N",
-        );
-        if (not $cont) {
-            $self->script->chat("! ABORTED.\n");
-            exit(1);
+        else {
+            # site is not the same as with the currently deployed release, then we warn the user
+            $self->script->chat("!!! WARNING:\n");
+            $self->script->chat("    You are about to deploy a site that does NOT match the existing installation ...\n");
+            $self->script->chat("           Existing        =>  [$current_origin]\n");
+            $self->script->chat("           You requested   =>  [$release_origin]\n");
+            $self->script->chat("\n");
+            my $cont = Term::Prompt::prompt(
+                'y', 
+                "Continue with deploy?",
+                "y/N",
+                "N",
+            );
+            if (not $cont) {
+                $self->script->chat("! ABORTED.\n");
+                exit(1);
+            }
         }
     }
 
