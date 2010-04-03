@@ -46,6 +46,7 @@ Requirements
     * File::Copy::Recursive
     * YAML
     * LWP
+    * Term::Prompt
 * GNU coreutils / GNU autotools
 * Subversion client `svn`
 

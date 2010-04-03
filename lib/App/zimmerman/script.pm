@@ -10,7 +10,6 @@ use File::Basename ();
 use File::Path ();
 use File::Spec ();
 use Pod::Usage;
-use Term::Prompt ();
 use App::zimmerman;
 use App::zimmerman::Config::Export;
 use App::zimmerman::Config::Site;

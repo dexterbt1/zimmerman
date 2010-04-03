@@ -2,7 +2,7 @@ use strict;
 use Module::Build;
 my $build = Module::Build->new(
     module_name     => 'App::zimmerman',
-    dist_author     => q{Dexter Tad-y <dtady@cpan.org>},
+    dist_author     => q{Dexter B. Tad-y <dtady@cpan.org>},
     license         => 'perl',
     build_requires  => {
         'perl'                      => '5.6.1',
@@ -11,8 +11,8 @@ my $build = Module::Build->new(
         'File::Copy::Recursive'     => 0,
         'YAML'                      => 0,
         'URI'                       => 0,
+        'Term::Prompt'              => 0,
     },
-    add_to_cleanup      => [ 'Foo-Bar-*' ],
     script_files => {
         'bin/zim',
     },

@@ -41,15 +41,37 @@ sub run {
     $self->script->chat("Using install_base:    $install_base\n");
     $self->script->chat("# ". ("-" x 60) . "\n");
     
-    # double check if site is not the same as with the currently deployed release
     my $current_release = $self->script->get_current_release_config( install_base => $install_base );
     my $current_origin = $current_release->get_release_origin;
     my $release_origin = $self->script->get_release_origin_string( $site_name, $site_branch );
-    if ($current_origin ne $release_origin) {
+    if ($current_origin eq $release_origin) {
+        # check if any of the dependencies have changed
+        my $updates = $self->count_updated_dependencies(
+            $current_release,
+            $repo_url, 
+            $site_name, 
+            $site_branch
+        );
+        if ($updates < 1) {
+            $self->script->chat("Site and dependencies are already up-to-date.\n");
+        }
+        my $cont = Term::Prompt::prompt(
+            'y', 
+            "Continue with deploy?",
+            "y/N",
+            "N",
+        );
+        if (not $cont) {
+            $self->script->chat("! ABORTED.\n");
+            exit(1);
+        }
+    }
+    else {
+        # site is not the same as with the currently deployed release, then we warn the user
         $self->script->chat("!!! WARNING:\n");
-        $self->script->chat("    About to deploy a site that does not match the existing installation ...\n");
-        $self->script->chat("           Existing        [$current_origin]\n");
-        $self->script->chat("           You requested   [$release_origin]\n");
+        $self->script->chat("    You are about to deploy a site that does NOT match the existing installation ...\n");
+        $self->script->chat("           Existing        =>  [$current_origin]\n");
+        $self->script->chat("           You requested   =>  [$release_origin]\n");
         $self->script->chat("\n");
         my $cont = Term::Prompt::prompt(
             'y', 
@@ -62,6 +84,7 @@ sub run {
             exit(1);
         }
     }
+
 
 
     # we need to generate an auto release_id in the pattern YYYYMMDDHHMMSS
@@ -383,11 +406,76 @@ sub start_cpan_deploy {
     }
     else {
         # parent
+        my $failed_handler = sub {
+            kill 'TERM', $pid;
+            $self->script->chat("\n! FAILED cpan install for module(s): ".join(", ", @{$p{modules}})."\n");
+            exit(127);
+        };
+        local $SIG{INT} = $failed_handler;
         waitpid $pid, 0;
-        if ($? != 0) {
-            die "Failed cpan install for module(s): ".join(", ", @{$p{modules}});
+        my $code = $?;
+        if ($code != 0) {
+            $failed_handler->();
         }
     }
+}
+
+
+
+sub count_updated_dependencies {
+    my ($self, $current_release, $repo_url, $site, $site_branch, $seen) = @_;
+    $seen ||= { };
+    my $count = 0;
+    my $this_site_display = "site=[$site]";
+    my $this_site_branch_display = $site_branch ? "site_branch=[$site_branch] " : '';
+    my $installed_sites = $current_release->{installed_sites};
+    my $repo = $self->script->get_repo_backend( url => $repo_url );
+    my $siteconf;
+    eval {
+        my $siteconf_contents = $repo->read_file(
+            site        => $site,
+            site_branch => $site_branch,
+            file_path   => File::Spec->catfile($self->script->{siteconf_dir}, $self->script->{siteconf_file}),
+        );
+        $siteconf = App::zimmerman::Config::Site->from_string( $siteconf_contents );
+    };
+    if ($@) { die "! ERROR: $@"; }
+    # check if site have updates
+    my $site_rev = $repo->peek_site_revision( site => $site, site_branch => $site_branch );
+    my $branch = $site_branch || '_default';
+    if ( (exists $installed_sites->{$site}) and (exists $installed_sites->{$site}->{$branch}) ) {
+        no warnings;
+        if ($site_rev ne $installed_sites->{$site}->{$branch}) {
+            $count++;
+        }
+    }
+    else {
+        $count++; # means this site is not has not been previously installed 
+    }
+    $seen->{zim}->{$site} = $site_branch;
+    # check each dependencies for updates
+    foreach my $df ($siteconf->dependencies) {
+        my ($dep_type, $dep_info) = @$df;
+        SWITCH: {
+            ($dep_type eq 'zim') and do {
+                my $dep_site = $dep_info->{site};
+                my $dep_site_branch = $dep_info->{site_branch} || '';
+                my $dep_site_branch_display = ($dep_site_branch) ? "site_branch=[$dep_site_branch] " : '';
+                if (exists($seen->{zim}->{$dep_site})) {
+                    die "! Circular dependency to dep_site=[$dep_site] at $this_site_display $this_site_branch_display";
+                }
+                my $dep_repo_url = $repo_url;
+                if ($dep_info->{repo}) {
+                    # site dependency points to another repo, use this
+                    $dep_repo_url = $dep_info->{repo};
+                }
+                $count += $self->count_updated_dependencies($current_release, $dep_repo_url, $dep_site, $dep_site_branch, $seen);
+                last SWITCH;
+            };
+        }
+    }
+    
+    return $count;
 }
 
 
