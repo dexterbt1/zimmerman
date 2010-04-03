@@ -87,7 +87,7 @@ sub dispatch {
     if ($argh->{help}) {
         $c->help;
     }
-    $c->run( $arga, $argh );
+    return $c->run( $arga, $argh );
 }
 
 
@@ -187,6 +187,11 @@ sub set_release_symlink {
     $this_release_config->{release_id}              = $p{release_id};
     $this_release_config->{release_origin}          = $p{release_origin};
     $this_release_config->{rollback_id}             = $rollback_id;
+    if (exists $p{installed_sites}) {
+        # save installed_sites info only if supplied as a parameter
+        # otherwise, reuse from file
+        $this_release_config->{installed_sites} = $p{installed_sites};
+    }
     $this_release_config->save();
 
     # TODO:

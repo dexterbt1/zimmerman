@@ -1,8 +1,8 @@
----
+--- 
 zim: site
 dependencies:
+    - zim:
+        site: "Hello-World"
+        site_branch: "trunk"
     - cpan:
         module: "Class::LazyFactory"
-    - zim:
-        site: shared-all
-        site_branch: tags/1.0

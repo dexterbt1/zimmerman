@@ -64,7 +64,7 @@ sub run {
     }
 
 
-    # we need to generate a auto release_id in the pattern YYYYMMDDHHMMSS
+    # we need to generate an auto release_id in the pattern YYYYMMDDHHMMSS
     # this will be used 
     my $release_id = $self->get_auto_release_id();
     my $tmp_base = File::Spec->catdir($install_base, '_tmp', $release_id);
@@ -80,6 +80,7 @@ sub run {
         cpan    => { },
     };
     $seen_deps->{zim}->{$site_name} = $site_branch;
+    my $installed_sites = { };
     $self->start_site_deploy( 
         repo                => $repo,
         release_id          => $release_id,
@@ -89,6 +90,7 @@ sub run {
         install_base_tmp    => $tmp_base,
         seen_deps           => $seen_deps,
         depth_count         => 1,
+        installed_sites     => $installed_sites,
     );
 
     $self->script->chat("# ". ("-" x 60) . "\n");
@@ -99,6 +101,7 @@ sub run {
             install_base        => $install_base,
             install_base_tmp    => $tmp_base,
             release_origin      => $release_origin,
+            installed_sites     => $installed_sites,
         );
     };
     if ($@) {
@@ -108,6 +111,7 @@ sub run {
     # ... no errors so far
     $self->script->chat("OK\n");
     sleep 1;
+    return 1; # return true as $script->dispatch returns this
 }
 
 
@@ -137,9 +141,9 @@ sub start_site_deploy {
                 my $dep_site = $dep_info->{site};
                 my $dep_site_branch = $dep_info->{site_branch} || '';
                 my $dep_site_branch_display = ($dep_site_branch) ? "site_branch=[$dep_site_branch] " : '';
-                if (exists($p{seen_deps}->{zim}->{$dep_site}) and $p{seen_deps}->{zim}->{$dep_site} eq $dep_site_branch) {
+                if (exists($p{seen_deps}->{zim}->{$dep_site})) {
                     ####next; # next dependency since we're already building this in the pipeline
-                    die "! Circular dependency to dep_site=[$dep_site] $dep_site_branch_display";
+                    die "! Circular dependency to dep_site=[$dep_site] at $this_site_display $this_site_branch_display";
                 }
                 $p{seen_deps}->{zim}->{$dep_site} = $dep_site_branch;
                 my %subp = %p;
@@ -190,6 +194,7 @@ sub start_site_deploy {
     );
 
     # compare cached revision to the current site branch revision
+    my $current_site_rev;
     my $use_cached_copy = 0; # assume cache is stale
     my $cached_site_rev;
     eval {
@@ -197,7 +202,7 @@ sub start_site_deploy {
         $cached_site_rev = $xconf->{revision};
     };
     if (defined $cached_site_rev) {
-        my $current_site_rev = $repo->peek_site_revision(
+        $current_site_rev = $repo->peek_site_revision(
             site                => $p{site},
             site_branch         => $p{site_branch},
         );
@@ -245,6 +250,10 @@ sub start_site_deploy {
     );
 
     $self->script->chat("Installed $this_site_display $this_site_branch_display\n");
+
+    my $installed_site          = $p{site};
+    my $installed_site_branch   = $p{site_branch} || '_default';
+    $p{installed_sites}->{$installed_site}->{$installed_site_branch} = $current_site_rev;
 
 } # start_site_deploy
 

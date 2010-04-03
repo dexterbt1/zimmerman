@@ -1,0 +1,5 @@
+---
+zim: site
+dependencies:
+    - zim:
+        site: circ-test
