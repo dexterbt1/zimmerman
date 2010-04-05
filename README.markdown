@@ -48,6 +48,8 @@ Requirements
     * LWP
     * Term::Prompt
 * GNU coreutils / GNU autotools
+    * `env`
+    * `tar`
 * Subversion client `svn`
 
 

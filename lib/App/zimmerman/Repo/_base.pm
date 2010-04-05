@@ -29,19 +29,19 @@ sub get_base_uri {
 }
 
 sub get_url {
-    die "Unimplemented";
+    croak "Unimplemented";
 }
 
 sub read_file {
-    die "Unimplemented";
+    croak "Unimplemented";
 }
 
 sub export {
-    die "Unimplemented";
+    croak "Unimplemented";
 }
 
 sub peek_site_revision {
-    die "Unimplemented";
+    croak "Unimplemented";
 }
 
 1;

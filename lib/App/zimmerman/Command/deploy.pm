@@ -55,16 +55,16 @@ sub run {
             );
             if ($updates < 1) {
                 $self->script->chat("Site and dependencies are already up-to-date.\n");
-            }
-            my $cont = Term::Prompt::prompt(
-                'y', 
-                "Continue with deploy?",
-                "y/N",
-                "N",
-            );
-            if (not $cont) {
-                $self->script->chat("! ABORTED.\n");
-                exit(1);
+                my $cont = Term::Prompt::prompt(
+                    'y', 
+                    "Continue with deploy?",
+                    "y/N",
+                    "N",
+                );
+                if (not $cont) {
+                    $self->script->chat("! ABORTED.\n");
+                    exit(1);
+                }
             }
         }
         else {
