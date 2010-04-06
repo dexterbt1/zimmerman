@@ -447,7 +447,9 @@ sub count_updated_dependencies {
     my $branch = $site_branch || '_default';
     if ( (exists $installed_sites->{$site}) and (exists $installed_sites->{$site}->{$branch}) ) {
         no warnings;
-        if ($site_rev ne $installed_sites->{$site}->{$branch}) {
+        if (    not(defined $site_rev)
+            or  not(defined $installed_sites->{$site}->{$branch})
+            or  ($site_rev ne $installed_sites->{$site}->{$branch}) ) {
             $count++;
         }
     }
