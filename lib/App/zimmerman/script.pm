@@ -54,6 +54,7 @@ sub new {
 
 sub load_config {
     my ($self, $arga, $argh) = @_;
+    my $arg_rc = exists $self->{rc} ? 1 : 0;
     if (not exists $self->{rc}) {
         # set default config file
         $self->{rc} = $self->{scriptconf_filepath};
@@ -68,7 +69,7 @@ sub load_config {
             }
         }
     };
-    if ($@ and exists($self->{rc})) {
+    if ($@ and $arg_rc) {
         die "Unable to load config file: $@\n\nPlease run setup via: $self->{script_name} configure\n\n";
     }
     return $self;
